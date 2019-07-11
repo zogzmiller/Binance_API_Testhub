@@ -1,10 +1,11 @@
+import datetime as dt
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import pandas as pd
 import numpy as np
 import requests
 import time
 import urllib
-import datetime
 import pymongo
 ###################################################################
 #BINANCE API REQUEST TYPES WITH PARAMS/LIMITS/WEIGHTS ???????
@@ -50,44 +51,62 @@ binance_bookTicker_url = 'https://api.binance.com/api/v3/ticker/bookTicker?'
 
 crypto_symbols = {
     'LTCBTC' : 'symbol=LTCBTC',
-    'ETHUSDT' : 'symbol=ETHUSDT',
+    'LTCUSDT' : 'symbol=LTCUSDT',
     'BTCUSDT' : 'symbol=BTCUSDT',
-    'ETHBTC' : 'symbol=ETHBTC',
-    'BCCBTC' : 'symbol=BCCBTC',
+    'XRPUSDT' : 'symbol=XRPUSDT',
     'XRPBTC' : 'symbol=XRPBTC'}
 
 conn = 'mongodb://localhost:27017'
 client = pymongo.MongoClient(conn)
+interval_1min = '&interval=1m'
+
+for key, symbol in crypto_symbols.items():
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    xs = []
+    ys = []
+    coin = key
+    recent_klines_url = binance_klines_url + symbol + interval_1min
+    avg_price_url = binance_avgPrice_url + symbol
+    current_time_request = requests.get(binance_time_url).json()    
+    recent_trade_response = requests.get(recent_klines_url).json()
+    avg_price_response = requests.get(avg_price_url).json()
+
+    # print(recent_trade_response)    
+    # print(avg_price_response)
+    # print(current_time_request)
+    # print(datetime.datetime.now())
 
 
+    # Initialize communication with TMP102
 
-go = True
+    # This function is called periodically from FuncAnimation
+    def animate(i, xs, ys):
 
-while go is True:
-    for key, symbol in crypto_symbols.items():
-        db = client[f'{key}']
-        coll = db[f'Binance API']
-        mongodump = {}
-        print(key)
-        recent_trade_url = binance_trade_url + symbol + '&limit=1000'
-        avg_price_url = binance_avgPrice_url + symbol
-        current_time_request = requests.get(binance_time_url).json()    
-        recent_trade_response = requests.get(recent_trade_url).json()
-        avg_price_response = requests.get(avg_price_url).json()
-        mongodump = {'Python Timestamp' : datetime.datetime.now(), 'Binance Time' : current_time_request['serverTime'] , 'Recent 1000 Trades' : recent_trade_response, 'Average Price' : avg_price_response}
-        coll.insert_one(mongodump)
-        # db.cryptotesting.insert_one({'Binance Timestamp' : current_time_request})
-        # db.cryptotesting.insert_one({'Python Timestamp' : datetime.datetime.now()})
-        # for x in response:
-        #     print(x)
-        #     db.cryptotesting.insert_one({'Recent 1000 Trades' : x})
-        # db.cryptotesting.insert_one(current_time_request)
-        # db.cryptotesting.insert_one(datetime.datetime.now())
-        print(current_time_request)
-        print(datetime.datetime.now())
-    time.sleep(5)
+        # Read temperature (Celsius) from TMP102
+        for key in recent_trade_response:
+            bt = key[0]
+            # time.append(float(key[6]))
+            pt = key[1]
+            # price.append(float(key[4]))
+            xs.append(bt)
+            ys.append(pt)
 
+        # Limit x and y lists to 20 items
 
+        # Draw x and y lists
+        ax.clear()
+        ax.plot(xs, ys)
+
+        # Format plot
+        plt.xticks(rotation=45, ha='right')
+        plt.subplots_adjust(bottom=0.30)
+        plt.title(f'{coin} Recent Klines')
+        plt.ylabel('Price of Trade')
+
+    # Set up plot to call animate() function periodically
+    ani = animation.FuncAnimation(fig, animate, fargs=(xs, ys), interval=1000)
+    plt.show()
 # dict_keys = list(response[0].keys())
 # test_df = pd.DataFrame(response)
 
